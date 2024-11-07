@@ -178,45 +178,65 @@ class GUI:
                 self.frame_count += 1
             else:
                 self.frame_count = 0
-                
-            self.draw_board()
-            self.draw_pieces()
+            
+            if not game_over:
+                    
+                self.draw_board()
+                self.draw_pieces()
 
-            pygame.display.update()
-            # event handling
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    run = False
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not game_over:
+                pygame.display.update()
+                # event handling
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        run = False
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not game_over:
 
-                    x_coord = event.pos[0] // 100
-                    y_coord = event.pos[1] // 100
-                    click_coords = (x_coord, y_coord)
-                    print(click_coords)
-                    if self.state.value < 2:
-                        partial_move = f"{chr(97+x_coord)}{8-y_coord}"
-                    else:
-                        partial_move = f"{chr(104-x_coord)}{1+y_coord}"
+                        x_coord = event.pos[0] // 100
+                        y_coord = event.pos[1] // 100
+                        click_coords = (x_coord, y_coord)
+                        
+                        if self.state.value < 2:
+                            partial_move = f"{chr(97+x_coord)}{8-y_coord}"
+                        else:
+                            partial_move = f"{chr(104-x_coord)}{1+y_coord}"
 
-                    print(partial_move)
-                    if self.state == GuiState.white_to_move:
-                        self.state = GuiState.white_selected
-                        move += partial_move
-                    elif self.state == GuiState.white_selected:
-                        self.state = GuiState.black_to_move
-                        move += partial_move
-                        print(move)
-                        self.board.push_san(move)
-                        move = ""
-                    elif self.state == GuiState.black_to_move:
-                        self.state = GuiState.black_selected
-                        move += partial_move
-                    elif self.state == GuiState.black_selected:
-                        self.state = GuiState.white_to_move
-                        move += partial_move
-                        print(move)
-                        self.board.push_san(move)
-                        move = ""
+                        if self.state == GuiState.white_to_move:
+                            self.state = GuiState.white_selected
+                            move += partial_move
+                        elif self.state == GuiState.white_selected:
+                            self.state = GuiState.black_to_move
+                            move += partial_move
+                            
+                            self.board.push_san(move)
+                            move = ""
+                        elif self.state == GuiState.black_to_move:
+                            self.state = GuiState.black_selected
+                            move += partial_move
+                        elif self.state == GuiState.black_selected:
+                            self.state = GuiState.white_to_move
+                            move += partial_move
+                            
+                            self.board.push_san(move)
+                            move = ""
+                    
+                if self.board.is_game_over():
+                    self.draw_board()
+                    self.draw_pieces()
+
+                    pygame.display.update()
+                    pygame.draw.rect(self.screen, 'black', [200, 360, 400, 80])
+                    self.screen.blit(self.font.render(
+                        f'Result: {self.board.result()}!', True, 'white'), (210, 390))
+                    
+                    pygame.display.update()
+                    game_over = True
+                    
+            else:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        run = False
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        run = False
                     
 if __name__ == "__main__":
     g = GUI()
