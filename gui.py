@@ -33,8 +33,31 @@ class GUI:
         self.board = chess.Board()
         # self.board.push_san("d2d4")
         # self.board.push_san("d7d5")
+ 
+    def square_coords_to_screen_coords(self, rank, file):
+        if self.state.value < 2:
+            y_coord = 7 - rank
+            x_coord = file
+        else:
+            y_coord = rank
+            x_coord = 7 - file
+        return x_coord, y_coord
 
-
+    def screen_coords_to_square_coords(self, x_coord, y_coord):
+        if self.state.value < 2:
+            rank = 7 - y_coord
+            file = x_coord
+        else:
+            rank = y_coord
+            file = 7 - x_coord
+        return rank, file
+    
+    def square_coords_to_name(self, rank, file):
+        return f"{chr(97+file)}{rank+1}"
+    
+    def square_num_to_square_coords(self, sq_num):
+        return sq_num // 8, sq_num % 8
+    
     # draw main game board
     def draw_board(self):
         self.screen.fill(self.dark_color)
@@ -81,24 +104,45 @@ class GUI:
 
     def draw_pieces(self):
         str_arr = str(self.board).replace(" ", "").split("\n")
-        # print(len(self.board.move_stack))
+
         if len(self.board.move_stack) % 2 == 1:
             str_arr = str_arr[::-1]
             for i in range(8):
                 str_arr[i] = str_arr[i][::-1]
-        # print(str_arr)
 
         for row in range(8):
             for col in range(8):
                 piece = str_arr[row][col]
                 if piece != ".":
                     if piece == "P" or piece == "p":
-                        shifts = (20, 30)
+                        shifts = (15, 30)
                     else: 
                         shifts = (10, 10)
                     self.screen.blit(
                         self.image_dict[piece], (col * 100 + shifts[0], row * 100 + shifts[1])
                     )
+
+    def draw_valid_moves(self, square_clicked):
+        if self.state.value < 2:
+            color = 'red'
+        else:
+            color = 'blue'
+        
+        for move in self.board.legal_moves:
+            if move.from_square == square_clicked:
+                r, f = self.square_num_to_square_coords(move.to_square)
+                x, y = self.square_coords_to_screen_coords(r, f)
+                
+                pygame.draw.circle(
+                    self.screen, 
+                    color, 
+                    (
+                        x * 100 + 50, 
+                        y * 100 + 50
+                    ), 5)
+                
+        pygame.display.update()
+
 
     def open(self):
         pygame.init()
@@ -170,6 +214,11 @@ class GUI:
         winner = ''
         game_over = False
         move = ""
+
+        self.draw_board()
+        self.draw_pieces()
+        pygame.display.update()
+
         # main game loop
         run = True
         while run:
@@ -181,10 +230,7 @@ class GUI:
             
             if not game_over:
                     
-                self.draw_board()
-                self.draw_pieces()
 
-                pygame.display.update()
                 # event handling
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
@@ -194,30 +240,60 @@ class GUI:
                         x_coord = event.pos[0] // 100
                         y_coord = event.pos[1] // 100
                         click_coords = (x_coord, y_coord)
+
+                        rank_clicked, file_clicked = self.screen_coords_to_square_coords(x_coord, y_coord)
+                        partial_move = self.square_coords_to_name(rank_clicked, file_clicked)
+                        # print(rank_clicked, file_clicked)
+                        # print(partial_move)
                         
-                        if self.state.value < 2:
-                            partial_move = f"{chr(97+x_coord)}{8-y_coord}"
-                        else:
-                            partial_move = f"{chr(104-x_coord)}{1+y_coord}"
+                        square_clicked = chess.square(file_clicked, rank_clicked)
+                        color_clicked = self.board.color_at(square_clicked)
+                        print(color_clicked)
 
                         if self.state == GuiState.white_to_move:
-                            self.state = GuiState.white_selected
-                            move += partial_move
+                            if color_clicked == True:
+                                self.state = GuiState.white_selected
+                                move += partial_move
+                                self.draw_valid_moves(square_clicked)
+                            else:
+                                move = ""
+                            print(move)
+
                         elif self.state == GuiState.white_selected:
-                            self.state = GuiState.black_to_move
                             move += partial_move
-                            
-                            self.board.push_san(move)
+                            if move in [str(m) for m in self.board.legal_moves]:
+                                self.state = GuiState.black_to_move
+                                self.board.push_san(move)
+
+                            else:
+                                self.state = GuiState.white_to_move
+
+                            self.draw_board()
+                            self.draw_pieces()
                             move = ""
+
                         elif self.state == GuiState.black_to_move:
-                            self.state = GuiState.black_selected
-                            move += partial_move
+                            if color_clicked == False:
+                                self.state = GuiState.black_selected
+                                move += partial_move
+                                self.draw_valid_moves(square_clicked)
+                            else:
+                                move = ""
+
                         elif self.state == GuiState.black_selected:
-                            self.state = GuiState.white_to_move
                             move += partial_move
-                            
-                            self.board.push_san(move)
+                            if move in [str(m) for m in self.board.legal_moves]:
+                                self.state = GuiState.white_to_move
+                                self.board.push_san(move)
+
+                            else:
+                                self.state = GuiState.black_to_move
+
+                            self.draw_board()
+                            self.draw_pieces()
                             move = ""
+                    
+                    pygame.display.update()
                     
                 if self.board.is_game_over():
                     self.draw_board()
@@ -235,9 +311,26 @@ class GUI:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         run = False
-                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 2:
                         run = False
-                    
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        game_over = False
+                        move = ""
+                        self.board.reset()
+
+                        self.draw_board()
+                        self.draw_pieces()
+
+                        pygame.display.update()
+
+
 if __name__ == "__main__":
     g = GUI()
     g.open()
+    # for rank in range(8):
+    #     for file in range(8):
+    #         x, y = g.square_coords_to_screen_coords(rank, file)
+    #         print(g.square_coords_to_name(rank, file), rank, file)
+    #         print(x, y)
+    #         r, f = g.screen_coords_to_square_coords(x, y)
+    #         print(g.square_coords_to_name(r, f), r, f)
