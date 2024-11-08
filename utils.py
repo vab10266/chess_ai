@@ -1,6 +1,7 @@
 import chess
 import numpy as np
 import pandas as pd
+from pandas.errors import EmptyDataError
 
 def board_to_tensor(board):
     board_state = np.ndarray(shape=(0, 8, 8))
@@ -78,7 +79,10 @@ def tensor_to_str_board(tensor):
     return str(str_board)
 
 def add_df_to_db(path, df):
-    db = pd.read_csv(path)
+    try:
+        db = pd.read_csv(path)
+    except EmptyDataError:
+        db = None
     db = pd.concat((df, db), axis=0)
     db.to_csv(path, index=False)
     print(db)

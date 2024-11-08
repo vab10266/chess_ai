@@ -1,8 +1,10 @@
 
 # Importing Modules
+import pandas as pd
 import pygame
 import chess
 from enum import Enum
+from utils import board_to_int_list, add_df_to_db
 
 class GuiState(Enum):
     white_to_move = 0
@@ -18,6 +20,9 @@ class GUI:
             fps: int = 60,
             dark_color: list = [187,190,100],
             light_color: list = [234,240,206],
+            save_white=True,
+            save_black=False,
+            save_path="opening_db\\vaud_vs_rand.csv"
         ) -> None:
                 
         self.state = GuiState.white_to_move
@@ -31,8 +36,10 @@ class GUI:
         self.flash_cycle_length = 30
 
         self.board = chess.Board()
-        # self.board.push_san("d2d4")
-        # self.board.push_san("d7d5")
+        self.save_white = save_white
+        self.save_black = save_black
+        self.state_df = None
+        self.path = save_path
  
     def square_coords_to_screen_coords(self, rank, file):
         if self.state.value < 2:
@@ -264,6 +271,20 @@ class GUI:
                             if move in [str(m) for m in self.board.legal_moves]:
                                 self.state = GuiState.black_to_move
                                 self.board.push_san(move)
+                                if self.save_white:
+                                    bit_board = board_to_int_list(self.board)
+                                    self.state_df = pd.concat((
+                                        self.state_df, 
+                                        pd.DataFrame(
+                                            [[
+                                                bit_board, 
+                                                len(self.board.move_stack) % 2,
+                                                move, 
+                                                "human"
+                                            ]], columns=["state", "color", "move", "player"]
+                                        )
+                                    ), axis=0)
+
 
                             else:
                                 self.state = GuiState.white_to_move
@@ -285,6 +306,19 @@ class GUI:
                             if move in [str(m) for m in self.board.legal_moves]:
                                 self.state = GuiState.white_to_move
                                 self.board.push_san(move)
+                                if self.save_black:
+                                    bit_board = board_to_int_list(self.board)
+                                    self.state_df = pd.concat((
+                                        self.state_df, 
+                                        pd.DataFrame(
+                                            [[
+                                                bit_board, 
+                                                len(self.board.move_stack) % 2,
+                                                move, 
+                                                "human"
+                                            ]], columns=["state", "color", "move", "player"]
+                                        )
+                                    ), axis=0)
 
                             else:
                                 self.state = GuiState.black_to_move
@@ -316,16 +350,22 @@ class GUI:
                     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                         game_over = False
                         move = ""
+                        if self.save_white or self.save_black:                        
+                            add_df_to_db(self.path, self.state_df)
                         self.board.reset()
 
                         self.draw_board()
                         self.draw_pieces()
 
                         pygame.display.update()
+        if self.save_white or self.save_black:                        
+            add_df_to_db(self.path, self.state_df)
 
 
 if __name__ == "__main__":
-    g = GUI()
+    g = GUI(
+            save_path="opening_db\\london_book.csv"
+    )
     g.open()
     # for rank in range(8):
     #     for file in range(8):
