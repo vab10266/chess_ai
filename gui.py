@@ -4,7 +4,8 @@ import pandas as pd
 import pygame
 import chess
 from enum import Enum
-from utils import board_to_int_list, add_df_to_db
+from agent import Agent, RandomAgent
+from utils import board_to_int_list, add_df_to_db, square_coords_to_screen_coords, screen_coords_to_square_coords, square_coords_to_name, square_num_to_square_coords
 
 class GuiState(Enum):
     white_to_move = 0
@@ -22,6 +23,8 @@ class GUI:
             light_color: list = [234,240,206],
             save_white=True,
             save_black=False,
+            white_player = "human",
+            black_player = "human",
             save_path="opening_db\\vaud_vs_rand.csv"
         ) -> None:
                 
@@ -40,40 +43,24 @@ class GUI:
         self.save_black = save_black
         self.state_df = None
         self.path = save_path
- 
-    def square_coords_to_screen_coords(self, rank, file):
-        if self.state.value < 2:
-            y_coord = 7 - rank
-            x_coord = file
-        else:
-            y_coord = rank
-            x_coord = 7 - file
-        return x_coord, y_coord
 
-    def screen_coords_to_square_coords(self, x_coord, y_coord):
-        if self.state.value < 2:
-            rank = 7 - y_coord
-            file = x_coord
+        if type(white_player) != str and issubclass(white_player, Agent):
+            self.white_player = white_player(self.board)
         else:
-            rank = y_coord
-            file = 7 - x_coord
-        return rank, file
-    
-    def square_coords_to_name(self, rank, file):
-        return f"{chr(97+file)}{rank+1}"
-    
-    def square_num_to_square_coords(self, sq_num):
-        return sq_num // 8, sq_num % 8
-    
+            self.white_player = None
+
+        if type(black_player) != str and issubclass(black_player, Agent):
+            self.black_player = black_player(self.board)
+        else:
+            self.black_player = None
+        
     # draw main game board
     def draw_board(self):
         self.screen.fill(self.dark_color)
-        # print("drawing board")
         for i in range(32):
 
             column = i % 4
             row = i // 4
-            # print(row, column)
 
             if row % 2 == 0:
                 pygame.draw.rect(
@@ -137,8 +124,8 @@ class GUI:
         
         for move in self.board.legal_moves:
             if move.from_square == square_clicked:
-                r, f = self.square_num_to_square_coords(move.to_square)
-                x, y = self.square_coords_to_screen_coords(r, f)
+                r, f = square_num_to_square_coords(move.to_square)
+                x, y = square_coords_to_screen_coords(r, f,self.state.value < 2)
                 
                 pygame.draw.circle(
                     self.screen, 
@@ -150,7 +137,54 @@ class GUI:
                 
         pygame.display.update()
 
-
+    def white_move(self, move):
+        if move in [str(m) for m in self.board.legal_moves]:
+            print(f"White: {move}")
+            self.state = GuiState.black_to_move
+            self.board.push_san(move)
+            if self.save_white:
+                bit_board = board_to_int_list(self.board)
+                self.state_df = pd.concat((
+                    self.state_df, 
+                    pd.DataFrame(
+                        [[
+                            bit_board, 
+                            len(self.board.move_stack) % 2,
+                            move, 
+                            "human" if self.white_player is None else 'bot'
+                        ]], columns=["state", "color", "move", "player"]
+                    )
+                ), axis=0)
+                
+        else:
+            self.state = GuiState.white_to_move
+        self.draw_board()
+        self.draw_pieces()
+    
+    def black_move(self, move):
+        if move in [str(m) for m in self.board.legal_moves]:
+            print(f"Black: {move}")
+            self.state = GuiState.white_to_move
+            self.board.push_san(move)
+            if self.save_black:
+                bit_board = board_to_int_list(self.board)
+                self.state_df = pd.concat((
+                    self.state_df, 
+                    pd.DataFrame(
+                        [[
+                            bit_board, 
+                            len(self.board.move_stack) % 2,
+                            move, 
+                            "human" if self.black_player is None else 'bot'
+                        ]], columns=["state", "color", "move", "player"]
+                    )
+                ), axis=0)
+                
+        else:
+            self.state = GuiState.black_to_move
+        self.draw_board()
+        self.draw_pieces()
+                
     def open(self):
         pygame.init()
 
@@ -164,60 +198,8 @@ class GUI:
 
         self.timer = pygame.time.Clock()
 
-                
-        # load in game piece images (queen, king, rook, bishop, knight, pawn) x 2
-        black_queen = pygame.image.load('./images/black_queen.png')
-        black_queen = pygame.transform.scale(black_queen, (80, 80))
-        black_queen_small = pygame.transform.scale(black_queen, (45, 45))
-        black_king = pygame.image.load('./images/black_king.png')
-        black_king = pygame.transform.scale(black_king, (80, 80))
-        black_king_small = pygame.transform.scale(black_king, (45, 45))
-        black_rook = pygame.image.load('./images/black_rook.png')
-        black_rook = pygame.transform.scale(black_rook, (80, 80))
-        black_rook_small = pygame.transform.scale(black_rook, (45, 45))
-        black_bishop = pygame.image.load('./images/black_bishop.png')
-        black_bishop = pygame.transform.scale(black_bishop, (80, 80))
-        black_bishop_small = pygame.transform.scale(black_bishop, (45, 45))
-        black_knight = pygame.image.load('./images/black_knight.png')
-        black_knight = pygame.transform.scale(black_knight, (80, 80))
-        black_knight_small = pygame.transform.scale(black_knight, (45, 45))
-        black_pawn = pygame.image.load('./images/black_pawn.png')
-        black_pawn = pygame.transform.scale(black_pawn, (65, 65))
-        black_pawn_small = pygame.transform.scale(black_pawn, (45, 45))
-        white_queen = pygame.image.load('./images/white_queen.png')
-        white_queen = pygame.transform.scale(white_queen, (80, 80))
-        white_queen_small = pygame.transform.scale(white_queen, (45, 45))
-        white_king = pygame.image.load('./images/white_king.png')
-        white_king = pygame.transform.scale(white_king, (80, 80))
-        white_king_small = pygame.transform.scale(white_king, (45, 45))
-        white_rook = pygame.image.load('./images/white_rook.png')
-        white_rook = pygame.transform.scale(white_rook, (80, 80))
-        white_rook_small = pygame.transform.scale(white_rook, (45, 45))
-        white_bishop = pygame.image.load('./images/white_bishop.png')
-        white_bishop = pygame.transform.scale(white_bishop, (80, 80))
-        white_bishop_small = pygame.transform.scale(white_bishop, (45, 45))
-        white_knight = pygame.image.load('./images/white_knight.png')
-        white_knight = pygame.transform.scale(white_knight, (80, 80))
-        white_knight_small = pygame.transform.scale(white_knight, (45, 45))
-        white_pawn = pygame.image.load('./images/white_pawn.png')
-        white_pawn = pygame.transform.scale(white_pawn, (65, 65))
-        white_pawn_small = pygame.transform.scale(white_pawn, (45, 45))
-
-        self.image_dict = {
-            "P": white_pawn,
-            "R": white_rook,
-            "N": white_knight,
-            "B": white_bishop,
-            "Q": white_queen,
-            "K": white_king,
-            "p": black_pawn,
-            "r": black_rook,
-            "n": black_knight,
-            "b": black_bishop,
-            "q": black_queen,
-            "k": black_king,
-        }
         
+        self.image_dict = load_pieces()
         winner = ''
         game_over = False
         move = ""
@@ -237,63 +219,46 @@ class GUI:
             
             if not game_over:
                     
-
+                if self.white_player is not None and self.state == GuiState.white_to_move:
+                    move = self.white_player.move()
+                    self.white_move(move)
+                
+                if self.black_player is not None and self.state == GuiState.black_to_move:
+                    move = self.black_player.move()
+                    self.black_move(move)
+                
                 # event handling
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         run = False
                     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not game_over:
-
                         x_coord = event.pos[0] // 100
                         y_coord = event.pos[1] // 100
                         click_coords = (x_coord, y_coord)
 
-                        rank_clicked, file_clicked = self.screen_coords_to_square_coords(x_coord, y_coord)
-                        partial_move = self.square_coords_to_name(rank_clicked, file_clicked)
-                        # print(rank_clicked, file_clicked)
-                        # print(partial_move)
+                        rank_clicked, file_clicked = screen_coords_to_square_coords(x_coord, y_coord, self.state.value < 2)
+                        partial_move = square_coords_to_name(rank_clicked, file_clicked)
                         
                         square_clicked = chess.square(file_clicked, rank_clicked)
                         color_clicked = self.board.color_at(square_clicked)
-                        print(color_clicked)
 
                         if self.state == GuiState.white_to_move:
+                            [print(m, end=", ") for m in self.board.legal_moves]
+                            print()
+                            move = ""
                             if color_clicked == True:
                                 self.state = GuiState.white_selected
                                 move += partial_move
                                 self.draw_valid_moves(square_clicked)
                             else:
                                 move = ""
-                            print(move)
 
                         elif self.state == GuiState.white_selected:
                             move += partial_move
-                            if move in [str(m) for m in self.board.legal_moves]:
-                                self.state = GuiState.black_to_move
-                                self.board.push_san(move)
-                                if self.save_white:
-                                    bit_board = board_to_int_list(self.board)
-                                    self.state_df = pd.concat((
-                                        self.state_df, 
-                                        pd.DataFrame(
-                                            [[
-                                                bit_board, 
-                                                len(self.board.move_stack) % 2,
-                                                move, 
-                                                "human"
-                                            ]], columns=["state", "color", "move", "player"]
-                                        )
-                                    ), axis=0)
-
-
-                            else:
-                                self.state = GuiState.white_to_move
-
-                            self.draw_board()
-                            self.draw_pieces()
-                            move = ""
+                            self.white_move(move)
 
                         elif self.state == GuiState.black_to_move:
+                            move = ""
                             if color_clicked == False:
                                 self.state = GuiState.black_selected
                                 move += partial_move
@@ -356,21 +321,69 @@ class GUI:
 
                         self.draw_board()
                         self.draw_pieces()
+                        self.state = GuiState.white_to_move
 
                         pygame.display.update()
         if self.save_white or self.save_black:                        
             add_df_to_db(self.path, self.state_df)
 
+def load_pieces():
+    # load in game piece images (queen, king, rook, bishop, knight, pawn) x 2
+    black_queen = pygame.image.load('./images/black_queen.png')
+    black_queen = pygame.transform.scale(black_queen, (80, 80))
+    black_queen_small = pygame.transform.scale(black_queen, (45, 45))
+    black_king = pygame.image.load('./images/black_king.png')
+    black_king = pygame.transform.scale(black_king, (80, 80))
+    black_king_small = pygame.transform.scale(black_king, (45, 45))
+    black_rook = pygame.image.load('./images/black_rook.png')
+    black_rook = pygame.transform.scale(black_rook, (80, 80))
+    black_rook_small = pygame.transform.scale(black_rook, (45, 45))
+    black_bishop = pygame.image.load('./images/black_bishop.png')
+    black_bishop = pygame.transform.scale(black_bishop, (80, 80))
+    black_bishop_small = pygame.transform.scale(black_bishop, (45, 45))
+    black_knight = pygame.image.load('./images/black_knight.png')
+    black_knight = pygame.transform.scale(black_knight, (80, 80))
+    black_knight_small = pygame.transform.scale(black_knight, (45, 45))
+    black_pawn = pygame.image.load('./images/black_pawn.png')
+    black_pawn = pygame.transform.scale(black_pawn, (65, 65))
+    black_pawn_small = pygame.transform.scale(black_pawn, (45, 45))
+    white_queen = pygame.image.load('./images/white_queen.png')
+    white_queen = pygame.transform.scale(white_queen, (80, 80))
+    white_queen_small = pygame.transform.scale(white_queen, (45, 45))
+    white_king = pygame.image.load('./images/white_king.png')
+    white_king = pygame.transform.scale(white_king, (80, 80))
+    white_king_small = pygame.transform.scale(white_king, (45, 45))
+    white_rook = pygame.image.load('./images/white_rook.png')
+    white_rook = pygame.transform.scale(white_rook, (80, 80))
+    white_rook_small = pygame.transform.scale(white_rook, (45, 45))
+    white_bishop = pygame.image.load('./images/white_bishop.png')
+    white_bishop = pygame.transform.scale(white_bishop, (80, 80))
+    white_bishop_small = pygame.transform.scale(white_bishop, (45, 45))
+    white_knight = pygame.image.load('./images/white_knight.png')
+    white_knight = pygame.transform.scale(white_knight, (80, 80))
+    white_knight_small = pygame.transform.scale(white_knight, (45, 45))
+    white_pawn = pygame.image.load('./images/white_pawn.png')
+    white_pawn = pygame.transform.scale(white_pawn, (65, 65))
+    white_pawn_small = pygame.transform.scale(white_pawn, (45, 45))
+
+    return {
+        "P": white_pawn,
+        "R": white_rook,
+        "N": white_knight,
+        "B": white_bishop,
+        "Q": white_queen,
+        "K": white_king,
+        "p": black_pawn,
+        "r": black_rook,
+        "n": black_knight,
+        "b": black_bishop,
+        "q": black_queen,
+        "k": black_king,
+    }
 
 if __name__ == "__main__":
     g = GUI(
-            save_path="opening_db\\london_book.csv"
+        black_player=RandomAgent,
+        # save_path="opening_db\\london_book.csv"
     )
     g.open()
-    # for rank in range(8):
-    #     for file in range(8):
-    #         x, y = g.square_coords_to_screen_coords(rank, file)
-    #         print(g.square_coords_to_name(rank, file), rank, file)
-    #         print(x, y)
-    #         r, f = g.screen_coords_to_square_coords(x, y)
-    #         print(g.square_coords_to_name(r, f), r, f)

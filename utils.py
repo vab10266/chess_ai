@@ -86,3 +86,31 @@ def add_df_to_db(path, df):
     db = pd.concat((df, db), axis=0)
     db.to_csv(path, index=False)
     print(db)
+
+
+# ---------------- UI Utils --------------
+ 
+def square_coords_to_screen_coords(rank, file, white_turn):
+    if white_turn:
+        y_coord = 7 - rank
+        x_coord = file
+    else:
+        y_coord = rank
+        x_coord = 7 - file
+    return x_coord, y_coord
+
+def screen_coords_to_square_coords(x_coord, y_coord, white_turn):
+    if white_turn:
+        rank = 7 - y_coord
+        file = x_coord
+    else:
+        rank = y_coord
+        file = 7 - x_coord
+    return rank, file
+
+def square_coords_to_name(rank, file):
+    return f"{chr(97+file)}{rank+1}"
+
+def square_num_to_square_coords(sq_num):
+    return sq_num // 8, sq_num % 8
+    
