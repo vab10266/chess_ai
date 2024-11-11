@@ -1,6 +1,7 @@
 import numpy as np
-from opening_tree import VaudOpeningSystem
+from opening_tree import DataBaseOpeningSystem
 from eval import score_board, get_color
+from utils import board_to_int_list
 
 class Agent:
     def __init__(self, board) -> None:
@@ -20,17 +21,14 @@ class RandomAgent(Agent):
 class VaudOpenAgent(Agent):
     def __init__(self, board) -> None:
         super().__init__(board)
-        self.opening_bot = VaudOpeningSystem()
+        self.opening_bot = DataBaseOpeningSystem(["opening_db\\vaud_vs_rand.csv"])
         self.state = "$EARLY$"
         self.color = None
     
     def move(self):
         legal_moves = [str(move) for move in self.board.legal_moves]
         if self.state == "$EARLY$":
-            try:
-                move = self.opening_bot.move(self.board.peek())
-            except IndexError:
-                move = self.opening_bot.move("init")
+            move = self.opening_bot.move(board_to_int_list(self.board))
 
             if move not in legal_moves:
                 self.state = "$MID$"
@@ -52,11 +50,10 @@ class VaudOpenAgent(Agent):
                     best_move = move
                 eval_dict[move] = score
                 self.board.pop()
-            # print(eval_dict)
-            # print(best_move, best_score * color)
+                
             return best_move
 
     def reset(self):
-        self.opening_bot = VaudOpeningSystem()
+        self.opening_bot = DataBaseOpeningSystem(["opening_db\\vaud_vs_rand.csv"])
         self.state = "$EARLY$"
         self.color = None

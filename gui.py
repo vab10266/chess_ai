@@ -4,7 +4,7 @@ import pandas as pd
 import pygame
 import chess
 from enum import Enum
-from agent import Agent, RandomAgent
+from agent import Agent, RandomAgent, VaudOpenAgent
 from utils import board_to_int_list, add_df_to_db, square_coords_to_screen_coords, screen_coords_to_square_coords, square_coords_to_name, square_num_to_square_coords
 
 class GuiState(Enum):
@@ -141,7 +141,6 @@ class GUI:
         if move in [str(m) for m in self.board.legal_moves]:
             print(f"White: {move}")
             self.state = GuiState.black_to_move
-            self.board.push_san(move)
             if self.save_white:
                 bit_board = board_to_int_list(self.board)
                 self.state_df = pd.concat((
@@ -155,6 +154,7 @@ class GUI:
                         ]], columns=["state", "color", "move", "player"]
                     )
                 ), axis=0)
+            self.board.push_san(move)
                 
         else:
             self.state = GuiState.white_to_move
@@ -165,7 +165,6 @@ class GUI:
         if move in [str(m) for m in self.board.legal_moves]:
             print(f"Black: {move}")
             self.state = GuiState.white_to_move
-            self.board.push_san(move)
             if self.save_black:
                 bit_board = board_to_int_list(self.board)
                 self.state_df = pd.concat((
@@ -179,11 +178,25 @@ class GUI:
                         ]], columns=["state", "color", "move", "player"]
                     )
                 ), axis=0)
+            self.board.push_san(move)
                 
         else:
             self.state = GuiState.black_to_move
         self.draw_board()
         self.draw_pieces()
+
+    def restart(self):
+        self.game_over = False
+        self.move = ""
+        if self.save_white or self.save_black:                        
+             (self.path, self.state_df)
+        self.board.reset()
+
+        self.draw_board()
+        self.draw_pieces()
+        self.state = GuiState.white_to_move
+
+        pygame.display.update()
                 
     def open(self):
         pygame.init()
@@ -201,8 +214,8 @@ class GUI:
         
         self.image_dict = load_pieces()
         winner = ''
-        game_over = False
-        move = ""
+        self.game_over = False
+        self.move = ""
 
         self.draw_board()
         self.draw_pieces()
@@ -217,21 +230,21 @@ class GUI:
             else:
                 self.frame_count = 0
             
-            if not game_over:
+            if not self.game_over:
                     
                 if self.white_player is not None and self.state == GuiState.white_to_move:
-                    move = self.white_player.move()
-                    self.white_move(move)
+                    self.move = self.white_player.move()
+                    self.white_move(self.move)
                 
                 if self.black_player is not None and self.state == GuiState.black_to_move:
-                    move = self.black_player.move()
-                    self.black_move(move)
+                    self.move = self.black_player.move()
+                    self.black_move(self.move)
                 
                 # event handling
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         run = False
-                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not game_over:
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.game_over:
                         x_coord = event.pos[0] // 100
                         y_coord = event.pos[1] // 100
                         click_coords = (x_coord, y_coord)
@@ -243,55 +256,36 @@ class GUI:
                         color_clicked = self.board.color_at(square_clicked)
 
                         if self.state == GuiState.white_to_move:
-                            [print(m, end=", ") for m in self.board.legal_moves]
-                            print()
-                            move = ""
+                            # [print(m, end=", ") for m in self.board.legal_moves]
+                            # print()
+                            self.move = ""
                             if color_clicked == True:
                                 self.state = GuiState.white_selected
-                                move += partial_move
+                                self.move += partial_move
                                 self.draw_valid_moves(square_clicked)
                             else:
-                                move = ""
+                                self.move = ""
 
                         elif self.state == GuiState.white_selected:
-                            move += partial_move
-                            self.white_move(move)
+                            self.move += partial_move
+                            self.white_move(self.move)
 
                         elif self.state == GuiState.black_to_move:
-                            move = ""
+                            self.move = ""
                             if color_clicked == False:
                                 self.state = GuiState.black_selected
-                                move += partial_move
+                                self.move += partial_move
                                 self.draw_valid_moves(square_clicked)
                             else:
-                                move = ""
+                                self.move = ""
 
                         elif self.state == GuiState.black_selected:
-                            move += partial_move
-                            if move in [str(m) for m in self.board.legal_moves]:
-                                self.state = GuiState.white_to_move
-                                self.board.push_san(move)
-                                if self.save_black:
-                                    bit_board = board_to_int_list(self.board)
-                                    self.state_df = pd.concat((
-                                        self.state_df, 
-                                        pd.DataFrame(
-                                            [[
-                                                bit_board, 
-                                                len(self.board.move_stack) % 2,
-                                                move, 
-                                                "human"
-                                            ]], columns=["state", "color", "move", "player"]
-                                        )
-                                    ), axis=0)
-
-                            else:
-                                self.state = GuiState.black_to_move
-
-                            self.draw_board()
-                            self.draw_pieces()
-                            move = ""
+                            self.move += partial_move
+                            self.black_move(self.move)
                     
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                        # print("restart")
+                        self.restart()
                     pygame.display.update()
                     
                 if self.board.is_game_over():
@@ -304,7 +298,7 @@ class GUI:
                         f'Result: {self.board.result()}!', True, 'white'), (210, 390))
                     
                     pygame.display.update()
-                    game_over = True
+                    self.game_over = True
                     
             else:
                 for event in pygame.event.get():
@@ -313,17 +307,8 @@ class GUI:
                     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 2:
                         run = False
                     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                        game_over = False
-                        move = ""
-                        if self.save_white or self.save_black:                        
-                            add_df_to_db(self.path, self.state_df)
-                        self.board.reset()
+                        self.restart()
 
-                        self.draw_board()
-                        self.draw_pieces()
-                        self.state = GuiState.white_to_move
-
-                        pygame.display.update()
         if self.save_white or self.save_black:                        
             add_df_to_db(self.path, self.state_df)
 
@@ -383,7 +368,10 @@ def load_pieces():
 
 if __name__ == "__main__":
     g = GUI(
-        black_player=RandomAgent,
-        # save_path="opening_db\\london_book.csv"
+        white_player="human",
+        black_player=VaudOpenAgent,
+        save_path="opening_db\\vaud_vs_rand.csv",
+        save_white=False,
+        save_black=False,
     )
     g.open()

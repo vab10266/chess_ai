@@ -78,6 +78,9 @@ def tensor_to_str_board(tensor):
     str_board = str_board[:, ::-1]
     return str(str_board)
 
+def str_to_int_list(state_str):
+    return tuple(map(int, state_str[1:-1].split(', ')))
+
 def add_df_to_db(path, df):
     try:
         db = pd.read_csv(path)
@@ -85,7 +88,7 @@ def add_df_to_db(path, df):
         db = None
     db = pd.concat((df, db), axis=0)
     db.to_csv(path, index=False)
-    print(db)
+    print(df)
 
 
 # ---------------- UI Utils --------------

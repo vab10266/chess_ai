@@ -1,3 +1,8 @@
+import pandas as pd
+import numpy as np
+import chess
+from utils import board_to_int_list, int_list_to_tensor, tensor_to_str_board
+
 class OpeningTree:
     def __init__(self, state_dict):
         self.state = "init"
@@ -74,3 +79,39 @@ class VaudOpeningSystem(OpeningTree):
         self.state += f"_{move}"
         return move
         
+class DataBaseOpeningSystem:
+    def __init__(self, database_paths, weights=None):
+        if weights is None:
+            self.weights = [1 for dbp in database_paths]
+        else:
+            self.weights = weights
+        
+        self.db = None
+
+        for dbp, weight in zip(database_paths, self.weights):
+            df = pd.read_csv(dbp)
+            df["weight"] = weight
+            self.db = pd.concat((self.db, df), axis=0)
+        
+        # print(((self.db["state"][0][1:-1])))
+        # print((tuple(map(int, self.db["state"][0][1:-1].split(', ')))))
+        # print(self.db["move"][0])
+
+    def move(self, board_state):
+        # print(f"{str(board_state)}")
+        # print(str(board_state) == self.db["state"][0])
+        # print(self.db[self.db["state"] == str(board_state)])
+        # print(str(board_state) in self.db["state"])
+    
+        df = self.db[self.db["state"] == str(board_state)][["move", "weight"]].groupby("move").sum()
+        # print(df)
+        if df.shape[0] > 0:
+            return np.random.choice(df.index, p=df["weight"] / df["weight"].sum())
+        else:
+            return "$END$"
+
+if __name__ == "__main__":
+    vdbo = DataBaseOpeningSystem(["opening_db\\vaud_vs_rand.csv"])
+    print(vdbo.weights)
+    board = chess.Board()
+    print(vdbo.move(board_to_int_list(board)))
