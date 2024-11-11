@@ -368,10 +368,10 @@ def load_pieces():
 
 if __name__ == "__main__":
     g = GUI(
-        white_player="human",
-        black_player=VaudOpenAgent,
+        black_player="human",
+        white_player=RandomAgent,
         save_path="opening_db\\vaud_vs_rand.csv",
         save_white=False,
-        save_black=False,
+        save_black=True,
     )
     g.open()
