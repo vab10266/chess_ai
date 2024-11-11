@@ -155,7 +155,26 @@ class GUI:
                     )
                 ), axis=0)
             self.board.push_san(move)
-                
+
+        elif f"{move}q" in [str(m) for m in self.board.legal_moves]:
+            move = f"{move}q"
+            print(f"White: {move}")
+            self.state = GuiState.black_to_move
+            if self.save_white:
+                bit_board = board_to_int_list(self.board)
+                self.state_df = pd.concat((
+                    self.state_df, 
+                    pd.DataFrame(
+                        [[
+                            bit_board, 
+                            len(self.board.move_stack) % 2,
+                            move, 
+                            "human" if self.white_player is None else 'bot'
+                        ]], columns=["state", "color", "move", "player"]
+                    )
+                ), axis=0)
+            self.board.push_san(move)
+
         else:
             self.state = GuiState.white_to_move
         self.draw_board()
@@ -163,6 +182,25 @@ class GUI:
     
     def black_move(self, move):
         if move in [str(m) for m in self.board.legal_moves]:
+            print(f"Black: {move}")
+            self.state = GuiState.white_to_move
+            if self.save_black:
+                bit_board = board_to_int_list(self.board)
+                self.state_df = pd.concat((
+                    self.state_df, 
+                    pd.DataFrame(
+                        [[
+                            bit_board, 
+                            len(self.board.move_stack) % 2,
+                            move, 
+                            "human" if self.black_player is None else 'bot'
+                        ]], columns=["state", "color", "move", "player"]
+                    )
+                ), axis=0)
+            self.board.push_san(move)
+
+        elif f"{move}q" in [str(m) for m in self.board.legal_moves]:
+            move = f"{move}q"
             print(f"Black: {move}")
             self.state = GuiState.white_to_move
             if self.save_black:
@@ -368,10 +406,10 @@ def load_pieces():
 
 if __name__ == "__main__":
     g = GUI(
-        black_player="human",
-        white_player=RandomAgent,
+        white_player="human",
+        black_player=RandomAgent,
         save_path="opening_db\\vaud_vs_rand.csv",
         save_white=False,
-        save_black=True,
+        save_black=False,
     )
     g.open()
