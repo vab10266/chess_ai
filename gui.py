@@ -406,9 +406,10 @@ def load_pieces():
 
 if __name__ == "__main__":
     g = GUI(
+        fps=2,
         white_player="human",
-        black_player=RandomAgent,
-        save_path="opening_db\\vaud_vs_rand.csv",
+        black_player=VaudOpenAgent,
+        # save_path="opening_db\\gotham_catalan.csv",
         save_white=False,
         save_black=False,
     )

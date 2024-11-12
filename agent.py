@@ -1,6 +1,6 @@
 import numpy as np
 from opening_tree import DataBaseOpeningSystem
-from eval import score_board, get_color
+from eval import score_board, get_color, negamax_score
 from utils import board_to_int_list
 
 class Agent:
@@ -19,11 +19,16 @@ class RandomAgent(Agent):
         return np.random.choice(legal_moves)
 
 class VaudOpenAgent(Agent):
-    def __init__(self, board) -> None:
+    def __init__(self, board, depth=2) -> None:
         super().__init__(board)
-        self.opening_bot = DataBaseOpeningSystem(["opening_db\\vaud_vs_rand.csv"])
+        self.opening_bot = DataBaseOpeningSystem([
+            "opening_db\\vaud_vs_rand.csv", 
+            "opening_db\\gotham_london.csv",
+            "opening_db\\gotham_catalan.csv"
+            ])
         self.state = "$EARLY$"
         self.color = None
+        self.depth = depth
     
     def move(self):
         legal_moves = [str(move) for move in self.board.legal_moves]
@@ -36,24 +41,28 @@ class VaudOpenAgent(Agent):
             else:
                 return move
         elif self.state == "$MID$":
-            eval_dict = {}
-            best_move = legal_moves[0]
-            best_score = -999
-            color = get_color(self.board) * -1
+            # eval_dict = {}
+            # best_move = legal_moves[0]
+            # best_score = -999
+            color = get_color(self.board)
             # print(color)
-            for move in legal_moves:
-                self.board.push_san(move)
-                score = score_board(self.board)
-                score *= color
-                if score >= best_score:
-                    best_score = score
-                    best_move = move
-                eval_dict[move] = score
-                self.board.pop()
+            # for move in legal_moves:
+            #     self.board.push_san(move)
+            #     score = score_board(self.board)
+            #     score *= color
+            #     if score >= best_score:
+            #         best_score = score
+            #         best_move = move
+            #     eval_dict[move] = score
+            #     self.board.pop()
+            # if color == -1:
+            print("*-"*10)
+            best_move, score = negamax_score(self.board, self.depth, color)
+            # elif color == 1:
+            #     move, score = maximize_score(self.board, self.depth)
                 
-            return best_move
+            return str(best_move)
 
     def reset(self):
-        self.opening_bot = DataBaseOpeningSystem(["opening_db\\vaud_vs_rand.csv"])
-        self.state = "$EARLY$"
-        self.color = None
+        self.__init__(self.board)
+
