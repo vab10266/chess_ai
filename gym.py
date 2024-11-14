@@ -178,7 +178,7 @@ class Gym:
             if result == -1:
                 agent_1_wins += 1
 
-        return score, (agent_1_wins, agent_2_wins)
+        return score, (agent_1_wins, agent_2_wins), all_state_df
 
         
 

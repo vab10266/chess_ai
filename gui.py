@@ -25,7 +25,8 @@ class GUI:
             save_black=False,
             white_player = "human",
             black_player = "human",
-            save_path="opening_db\\vaud_vs_rand.csv"
+            save_path="opening_db\\vaud_vs_rand.csv",
+            opening_moves_list=[]
         ) -> None:
                 
         self.state = GuiState.white_to_move
@@ -53,6 +54,8 @@ class GUI:
             self.black_player = black_player(self.board)
         else:
             self.black_player = None
+        
+        self.opening_moves_list = opening_moves_list
         
     # draw main game board
     def draw_board(self):
@@ -234,6 +237,12 @@ class GUI:
         self.draw_pieces()
         self.state = GuiState.white_to_move
 
+        for i, move in enumerate(self.opening_moves_list):
+            if i % 2 == 0:
+                self.white_move(move)
+            else:
+                self.black_move(move)
+
         pygame.display.update()
                 
     def open(self):
@@ -254,6 +263,12 @@ class GUI:
         winner = ''
         self.game_over = False
         self.move = ""
+
+        for i, move in enumerate(self.opening_moves_list):
+            if i % 2 == 0:
+                self.white_move(move)
+            else:
+                self.black_move(move)
 
         self.draw_board()
         self.draw_pieces()
@@ -406,11 +421,16 @@ def load_pieces():
 
 if __name__ == "__main__":
     g = GUI(
-        fps=2,
+        fps=20,
         white_player="human",
         black_player=VaudOpenAgent,
-        # save_path="opening_db\\gotham_catalan.csv",
+        save_path="opening_db\\vaud_vs_rand.csv",
         save_white=False,
         save_black=False,
+        opening_moves_list=[
+            "e2e4"
+        ]
     )
+    # g.board.push_san("e2e4")
+    # g.white_move("e2e4")
     g.open()

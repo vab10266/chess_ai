@@ -1,6 +1,6 @@
 import numpy as np
 from opening_tree import DataBaseOpeningSystem
-from eval import score_board, get_color, negamax_score
+from eval import score_board, get_color, negamax_score_r, negamax_alpha_beta
 from utils import board_to_int_list
 
 class Agent:
@@ -19,13 +19,13 @@ class RandomAgent(Agent):
         return np.random.choice(legal_moves)
 
 class VaudOpenAgent(Agent):
-    def __init__(self, board, depth=2) -> None:
-        super().__init__(board)
-        self.opening_bot = DataBaseOpeningSystem([
+    def __init__(self, board, depth=2, db_paths=[
             "opening_db\\vaud_vs_rand.csv", 
             "opening_db\\gotham_london.csv",
             "opening_db\\gotham_catalan.csv"
-            ])
+            ]) -> None:
+        super().__init__(board)
+        self.opening_bot = DataBaseOpeningSystem(db_paths)
         self.state = "$EARLY$"
         self.color = None
         self.depth = depth
@@ -41,26 +41,12 @@ class VaudOpenAgent(Agent):
             else:
                 return move
         elif self.state == "$MID$":
-            # eval_dict = {}
-            # best_move = legal_moves[0]
-            # best_score = -999
-            color = get_color(self.board)
+
+            color = -get_color(self.board)
             # print(color)
-            # for move in legal_moves:
-            #     self.board.push_san(move)
-            #     score = score_board(self.board)
-            #     score *= color
-            #     if score >= best_score:
-            #         best_score = score
-            #         best_move = move
-            #     eval_dict[move] = score
-            #     self.board.pop()
-            # if color == -1:
-            print("*-"*10)
-            best_move, score = negamax_score(self.board, self.depth, color)
-            # elif color == 1:
-            #     move, score = maximize_score(self.board, self.depth)
-                
+            # best_move, score, _ = negamax_score_r(self.board, self.depth, color)
+            best_move, score, _ = negamax_alpha_beta(self.board, self.depth, color, -99, 99, 0)
+            # print(best_move, score)
             return str(best_move)
 
     def reset(self):
